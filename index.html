@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,38 +11,38 @@
 			<header class="app-header">
 				<h1>Deep Connect</h1>
 				<div class="controls">
-					<label class="sr-only" for="difficultyFilter">Mức độ</label>
+					<label class="sr-only" for="difficultyFilter">Difficulty</label>
 					<select id="difficultyFilter" class="control">
-						<option value="__ALL__">Tất cả mức độ</option>
+						<option value="__ALL__">All difficulties</option>
 					</select>
 
-					<label class="sr-only" for="topicFilter">Chủ đề</label>
+					<label class="sr-only" for="topicFilter">Topic</label>
 					<select id="topicFilter" class="control">
-						<option value="__ALL__">Tất cả chủ đề</option>
+						<option value="__ALL__">All topics</option>
 					</select>
 
 					<div class="spacer"></div>
 
-					<button id="prevBtn" class="control">◀ Trước</button>
-					<button id="flipBtn" class="control primary">Lật để thảo luận</button>
-					<button id="nextBtn" class="control">Sau ▶</button>
-					<button id="shuffleBtn" class="control">🔀 Ngẫu nhiên</button>
+					<button id="prevBtn" class="control">◀ Prev</button>
+					<button id="flipBtn" class="control primary">Flip</button>
+					<button id="nextBtn" class="control">Next ▶</button>
+					<button id="shuffleBtn" class="control">🔀 Shuffle</button>
 				</div>
-				<div id="progress" class="progress">Câu 0/0</div>
+				<div id="progress" class="progress">Card 0/0</div>
 			</header>
 
 			<main class="stage">
-				<div id="card" class="card" aria-label="Thẻ câu hỏi" role="button" tabindex="0">
-					<div class="badge difficulty-badge" id="difficultyBadge">Mức độ</div>
-					<div class="face front" id="cardQuestion">Câu hỏi</div>
-					<div class="face back" id="cardAnswer">Đáp án</div>
-					<button id="answeredBtn" class="card-action" title="Đánh dấu đã trả lời và xóa khỏi ngân hàng">✔ Đã trả lời</button>
+				<div id="card" class="card" aria-label="Question card" role="button" tabindex="0">
+					<div class="badge difficulty-badge" id="difficultyBadge">Difficulty</div>
+					<div class="face front" id="cardQuestion">Question</div>
+					<div class="face back" id="cardAnswer">Answer</div>
+					<button id="answeredBtn" class="card-action" title="Mark answered and remove from bank">✔ Answered</button>
 				</div>
 			</main>
 
 			<footer class="app-footer">
 				<div class="hints">
-					<span>Phím tắt: Space=Lật • ←/→=Trước/Sau • S=Ngẫu nhiên</span>
+					<span>Shortcuts: Space=Flip • ←/→=Prev/Next • S=Shuffle</span>
 				</div>
 			</footer>
 		</div>
@@ -146,8 +146,8 @@
 				function updateFaces() {
 					if (!filtered.length) return;
 					const item = filtered[currentIndex];
-					// Mặt trước luôn hiển thị số thứ tự
-					qEl.textContent = `Câu ${currentIndex + 1}`;
+					// Front shows the card number
+					qEl.textContent = `Card ${currentIndex + 1}`;
 					// Mặt sau hiển thị theo giai đoạn
 					if (revealStage === 0) {
 						aEl.textContent = '';
@@ -155,7 +155,7 @@
 						aEl.textContent = item.question;
 					} else {
 						const hasAnswer = typeof item.answer === 'string' && item.answer.trim().length > 0;
-						aEl.textContent = hasAnswer ? item.answer : 'Hãy cùng chia sẻ cảm nhận, câu chuyện và mong muốn của bạn.';
+						aEl.textContent = hasAnswer ? item.answer : 'Share your thoughts, stories, and wishes.';
 					}
 				}
 
@@ -191,9 +191,9 @@
 				}
 				function render() {
 					if (!filtered.length) {
-						qEl.textContent = 'Không có dữ liệu';
+						qEl.textContent = 'No data';
 						aEl.textContent = '';
-						progressEl.textContent = 'Câu 0/0';
+						progressEl.textContent = 'Card 0/0';
 						setFlipped(false);
 						revealStage = 0;
 						answeredBtn.style.display = 'none';
@@ -203,20 +203,20 @@
 					// Reset giai đoạn hiển thị về ban đầu
 					revealStage = 0;
 					updateFaces();
-					progressEl.textContent = `Câu ${currentIndex + 1}/${filtered.length}`;
+					progressEl.textContent = `Card ${currentIndex + 1}/${filtered.length}`;
 					// Badge & theme color per difficulty
 					const diff = (item.difficulty || '').trim();
 					badgeEl.textContent = diff || '—';
 					cardEl.classList.remove('theme-easy','theme-medium','theme-hard');
-					if (diff === 'Dễ') cardEl.classList.add('theme-easy');
-					else if (diff === 'Vừa') cardEl.classList.add('theme-medium');
-					else if (diff === 'Khó') cardEl.classList.add('theme-hard');
+					if (diff === 'Easy') cardEl.classList.add('theme-easy');
+					else if (diff === 'Medium') cardEl.classList.add('theme-medium');
+					else if (diff === 'Hard') cardEl.classList.add('theme-hard');
 					setFlipped(false);
 					answeredBtn.style.display = 'none';
 				}
 
-				// Init difficulties
-				const difficulties = uniq(data.map(d => d.difficulty).filter(Boolean)).sort();
+				// Init difficulties (normalize whitespace)
+				const difficulties = uniq(data.map(d => (d.difficulty || '').trim()).filter(Boolean)).sort();
 				for (const c of difficulties) {
 					const opt = document.createElement('option');
 					opt.value = c;
@@ -225,20 +225,42 @@
 				}
 
 				// Init topics (categories)
-				const topics = uniq(data.map(d => d.category).filter(Boolean)).sort();
+				// Normalize: trim, collapse whitespace, sort with Vietnamese collation
+				function normalizeCategory(s) {
+					// Trim, replace underscores with spaces, collapse multiple spaces
+					return (s || '').toString().trim().replace(/_/g, ' ').replace(/\s+/g, ' ');
+				}
+				const rawTopics = data.map(d => normalizeCategory(d.category)).filter(Boolean);
+				const topics = uniq(rawTopics).sort((a, b) => a.localeCompare(b, 'vi'));
+				// Map known category keys (now English) to nicer display labels
+				const categoryDisplayMap = {
+					'Love': 'Love',
+					'Food': 'Food',
+					'Travel': 'Travel',
+					'Family': 'Family',
+					'Friends': 'Friends',
+					'Valentine': 'Valentine',
+					'Tet Viet': 'Tet Viet',
+					'Tet_Viet': 'Tet Viet'
+				};
 				for (const t of topics) {
 					const opt = document.createElement('option');
+					// keep option value as the original (Vietnamese) category so filtering still works
 					opt.value = t;
-					opt.textContent = t;
+					opt.textContent = categoryDisplayMap[t] || t;
 					topicFilterEl.appendChild(opt);
 				}
+				// Debug: if you still don't see a category, open console to inspect normalized list
+				console.debug('topics initialized (normalized):', topics);
 
 				function applyFilter() {
 					const selDiff = difficultyFilterEl.value;
 					const selTopic = topicFilterEl.value;
 					filtered = data.filter(d => {
-						const diffOk = selDiff === '__ALL__' ? true : d.difficulty === selDiff;
-						const topicOk = selTopic === '__ALL__' ? true : (d.category === selTopic);
+						const diff = (d.difficulty || '').trim();
+						const cat = normalizeCategory(d.category);
+						const diffOk = selDiff === '__ALL__' ? true : diff === selDiff;
+						const topicOk = selTopic === '__ALL__' ? true : (cat === selTopic);
 						return diffOk && topicOk;
 					});
 					currentIndex = 0;
