@@ -1,4 +1,3 @@
-// DeepConnect question/answer dataset
 // Edit or extend this array to add more cards.
 // Each item: { id, category, question, answer }
 
