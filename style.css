@@ -1,0 +1,200 @@
+/* Base layout */
+:root {
+	/* Love-themed palette */
+	--bg: #1a0f17; /* deep plum */
+	--panel: #20141d; /* wine-dim */
+	--accent: #ff6aa2; /* pink */
+	--accent-2: #ffc2d1; /* soft rose */
+	--text: #fff6fb; /* warm white */
+	--muted: #e3c9d6; /* blush */
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+	margin: 0;
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+	background:
+		radial-gradient(1200px circle at 12% 18%, rgba(255,106,162,0.12), transparent 40%),
+		radial-gradient(1000px circle at 88% 82%, rgba(255,194,209,0.12), transparent 42%),
+		radial-gradient(900px circle at 60% 10%, rgba(199,158,255,0.10), transparent 45%),
+		var(--bg);
+	color: var(--text);
+}
+
+.app { max-width: 1100px; margin: 0 auto; padding: clamp(12px, 2vw, 24px); padding-top: calc(clamp(12px, 2vw, 24px) + env(safe-area-inset-top, 0px)); padding-bottom: calc(clamp(12px, 2vw, 24px) + env(safe-area-inset-bottom, 0px)); }
+
+.app-header { display: grid; gap: 12px; align-items: center; }
+.app-header h1 { margin: 0; font-size: 28px; letter-spacing: 0.3px; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--panel); padding: 8px; border-radius: 12px; }
+.control { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,194,209,0.35); background: #1f141c; color: var(--text); cursor: pointer; font-size: 14px; }
+.control:hover { border-color: var(--accent); }
+.control.primary { background: linear-gradient(135deg, #4a1733, #2a1421); border-color: rgba(255,106,162,0.55); color: #fff; }
+.spacer { flex: 1 1 auto; }
+.progress { color: var(--muted); font-size: 14px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+
+/* Stage */
+.stage { display: grid; place-items: center; min-height: 60svh; padding: 24px 0; }
+
+/* Flip card */
+.card {
+	position: relative;
+	width: min(720px, 92vw);
+	aspect-ratio: 16 / 10;
+	max-height: 72svh;
+	perspective: 1400px;
+	cursor: pointer;
+	/* Default love-themed accents (overridden by theme-* classes) */
+	--card-front-accent: rgba(255,106,162,0.22);
+	--card-front-border: rgba(255,106,162,0.45);
+	--card-back-accent: rgba(199,158,255,0.22);
+	--card-back-border: rgba(199,158,255,0.45);
+	--badge-bg: #ff6aa2;
+}
+
+.face {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 24px;
+	border-radius: 18px;
+	backdrop-filter: blur(4px);
+	-webkit-backface-visibility: hidden;
+	backface-visibility: hidden;
+	transform-style: preserve-3d;
+	box-shadow: 0 10px 32px rgba(58, 18, 43, 0.45), 0 2px 10px rgba(58,18,43,0.45) inset;
+	transition: transform 600ms cubic-bezier(.2,.7,.2,1);
+	line-height: 1.35;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	word-break: break-word;
+	overflow-wrap: anywhere;
+}
+
+.front {
+	background: linear-gradient(135deg, var(--card-front-accent), rgba(26,15,23,0.85));
+	border: 1px solid var(--card-front-border);
+	font-size: clamp(18px, 4.5vw, 28px);
+}
+
+.back {
+	background: linear-gradient(135deg, var(--card-back-accent), rgba(26,15,23,0.85));
+	border: 1px solid var(--card-back-border);
+	font-size: clamp(18px, 4.5vw, 28px);
+	transform: rotateY(180deg);
+}
+
+/* Difficulty badge */
+.difficulty-badge {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	z-index: 3;
+	padding: 6px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	letter-spacing: 0.2px;
+	background: var(--badge-bg);
+	color: #fff;
+	border: 1px solid rgba(255,255,255,0.25);
+	box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+/* Theme variants per difficulty */
+.card.theme-easy {
+	--card-front-accent: rgba(109,220,109,0.22);   /* green */
+	--card-front-border: rgba(109,220,109,0.50);
+	--card-back-accent: rgba(170,240,170,0.22);
+	--card-back-border: rgba(170,240,170,0.50);
+	--badge-bg: #3bbf63;
+}
+.card.theme-medium {
+	--card-front-accent: rgba(106,168,255,0.22);   /* blue */
+	--card-front-border: rgba(106,168,255,0.50);
+	--card-back-accent: rgba(170,200,255,0.22);
+	--card-back-border: rgba(170,200,255,0.50);
+	--badge-bg: #3a7bd5;
+}
+.card.theme-hard {
+	--card-front-accent: rgba(255,106,106,0.22);   /* red */
+	--card-front-border: rgba(255,106,106,0.50);
+	--card-back-accent: rgba(255,179,179,0.22);
+	--card-back-border: rgba(255,179,179,0.50);
+	--badge-bg: #d64b4b;
+}
+
+.card.flipped .front { transform: rotateY(180deg); }
+.card.flipped .back { transform: rotateY(360deg); }
+
+/* In-card action button */
+.card-action {
+	position: absolute;
+	bottom: 12px;
+	right: 12px;
+	z-index: 4;
+	padding: 6px 10px;
+	border-radius: 999px;
+	border: 1px solid rgba(255,194,209,0.45);
+	background: rgba(31,20,28,0.85);
+	color: var(--text);
+	cursor: pointer;
+	box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    font-size: 12px;
+}
+.card-action:hover { border-color: var(--accent); }
+
+.app-footer { display: flex; justify-content: center; color: var(--muted); font-size: 13px; }
+.hints { background: rgba(255,194,209,0.08); border: 1px dashed rgba(255,194,209,0.25); padding: 8px 12px; border-radius: 10px; }
+
+@media (max-width: 560px) {
+	.controls { gap: 6px; }
+	.control { padding: 6px 10px; font-size: 14px; }
+}
+
+/* Tablet adjustments */
+@media (max-width: 840px) {
+	.app { padding: 16px; }
+	.controls { gap: 10px; }
+	.control { font-size: 14px; }
+	.spacer { display: none; }
+	/* Allow controls to wrap nicely on tablet */
+	.controls > .control { flex: 1 1 140px; }
+	.stage { min-height: 58svh; }
+	.card { width: min(680px, 94vw); max-height: 68svh; }
+	.face { padding: 24px; border-radius: 16px; }
+}
+
+/* Mobile-friendly tweaks */
+@media (max-width: 560px) {
+	.app { padding: 14px; }
+	.controls { padding: 10px; display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 8px; }
+	.control { min-height: 36px; font-size: 13px; padding: 5px 8px; }
+	.controls > .control, .controls > select.control { width: 100%; }
+	.card { width: 96vw; max-height: 70svh; }
+	.face { padding: 18px; border-radius: 14px; }
+	.front, .back { font-size: clamp(14px, 3.6vw, 22px); }
+	.stage { min-height: 62svh; }
+}
+
+/* Tiny phones */
+@media (max-width: 360px) {
+	.control { min-height: 34px; font-size: 12.5px; padding: 4px 7px; }
+	.card { max-height: 64svh; }
+	.face { padding: 14px; border-radius: 12px; }
+	.front, .back { font-size: clamp(13px, 3.2vw, 18px); }
+}
+
+/* Landscape on small screens */
+@media (orientation: landscape) and (max-height: 480px) {
+	.app { padding: 12px; }
+	.controls { padding: 8px; gap: 6px; }
+	.control { padding: 5px 8px; min-height: 34px; font-size: 12.5px; }
+	.card { width: 90vw; max-height: 64svh; }
+	.face { padding: 16px; }
+	.front, .back { font-size: clamp(12px, 3.0vw, 18px); }
+}
+
