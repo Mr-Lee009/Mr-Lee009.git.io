@@ -101,8 +101,6 @@
 				// State
 				let filtered = data.slice();
 				let currentIndex = 0;
-				// 0: chỉ số thứ tự, 1: câu hỏi, 2: đáp án
-				let revealStage = 0;
 
 				// Elements
 				const difficultyFilterEl = document.getElementById('difficultyFilter');
@@ -148,15 +146,8 @@
 					const item = filtered[currentIndex];
 					// Front shows the card number
 					qEl.textContent = `Card ${currentIndex + 1}`;
-					// Mặt sau hiển thị theo giai đoạn
-					if (revealStage === 0) {
-						aEl.textContent = '';
-					} else if (revealStage === 1) {
-						aEl.textContent = item.question;
-					} else {
-						const hasAnswer = typeof item.answer === 'string' && item.answer.trim().length > 0;
-						aEl.textContent = hasAnswer ? item.answer : 'Share your thoughts, stories, and wishes.';
-					}
+					// Back always shows the question (two states only: flipped / not flipped)
+					aEl.textContent = item.question || '';
 				}
 
 				function moveCurrentToEndAndAdvance() {
@@ -200,8 +191,6 @@
 						return;
 					}
 					const item = filtered[currentIndex];
-					// Reset giai đoạn hiển thị về ban đầu
-					revealStage = 0;
 					updateFaces();
 					progressEl.textContent = `Card ${currentIndex + 1}/${filtered.length}`;
 					// Badge & theme color per difficulty
@@ -280,24 +269,9 @@
 				});
 				flipBtn.addEventListener('click', () => {
 					if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
-					if (revealStage === 0) {
-							revealStage = 1; // Hiện câu hỏi khi lật lần đầu
-						updateFaces();
-						setFlipped(true);
-							answeredBtn.style.display = 'inline-flex';
-						return;
-					}
-					if (revealStage === 1) {
-							revealStage = 2; // Lật tiếp để hiện đáp án
-						updateFaces();
-						setFlipped(true);
-						scheduleAdvance();
-						return;
-					}
-					// Sau khi đã ở giai đoạn 2, hành vi lật quay lại như cũ
 					const nowFlipped = !cardEl.classList.contains('flipped');
 					setFlipped(nowFlipped);
-					if (nowFlipped) scheduleAdvance(); else if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+					if (nowFlipped) answeredBtn.style.display = 'inline-flex'; else answeredBtn.style.display = 'none';
 				});
 				shuffleBtn.addEventListener('click', () => {
 					if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
@@ -314,45 +288,17 @@
 				topicFilterEl.addEventListener('change', () => { if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; } applyFilter(); });
 				cardEl.addEventListener('click', () => {
 					if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
-					if (revealStage === 0) {
-						revealStage = 1;
-						updateFaces();
-						setFlipped(true);
-						answeredBtn.style.display = 'inline-flex';
-						return;
-					}
-					if (revealStage === 1) {
-						revealStage = 2;
-						updateFaces();
-						setFlipped(true);
-						scheduleAdvance();
-						return;
-					}
 					const nowFlipped = !cardEl.classList.contains('flipped');
 					setFlipped(nowFlipped);
-					if (nowFlipped) scheduleAdvance(); else if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+					if (nowFlipped) answeredBtn.style.display = 'inline-flex'; else answeredBtn.style.display = 'none';
 				});
 				cardEl.addEventListener('keydown', (ev) => {
 					if (ev.key === 'Enter' || ev.key === ' ') {
 						ev.preventDefault();
 						if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
-						if (revealStage === 0) {
-							revealStage = 1;
-							updateFaces();
-							setFlipped(true);
-							answeredBtn.style.display = 'inline-flex';
-							return;
-						}
-						if (revealStage === 1) {
-							revealStage = 2;
-							updateFaces();
-							setFlipped(true);
-							scheduleAdvance();
-							return;
-						}
 						const nowFlipped = !cardEl.classList.contains('flipped');
 						setFlipped(nowFlipped);
-						if (nowFlipped) scheduleAdvance(); else if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+						if (nowFlipped) answeredBtn.style.display = 'inline-flex'; else answeredBtn.style.display = 'none';
 					}
 				});
 
