@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deep Connect - Nature Edition</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>Deep Connect</h1>
+            <p class="hero-text">Giao diện tối giản với tông tối, trắng và xanh lá nhạt. Lật thẻ, lọc câu hỏi và duyệt nhanh theo nhịp giống v1.</p>
+
+            <div class="controls-bar">
+                <div class="filters">
+                    <label class="sr-only" for="difficultyFilter">Difficulty</label>
+                    <select id="difficultyFilter" class="control filter-select">
+                        <option value="__ALL__">All difficulties</option>
+                    </select>
+
+                    <label class="sr-only" for="topicFilter">Topic</label>
+                    <select id="topicFilter" class="control filter-select">
+                        <option value="__ALL__">All topics</option>
+                    </select>
+                </div>
+
+                <div class="actions">
+                    <button id="prevBtn" class="control">◀ Prev</button>
+                    <button id="flipBtn" class="control flip-btn">Flip</button>
+                    <button id="nextBtn" class="control">Next ▶</button>
+                    <button id="shuffleBtn" class="control">🔀 Shuffle</button>
+                </div>
+            </div>
+
+            <div id="progress" class="card-counter">Card 0/0</div>
+        </header>
+
+        <main class="stage">
+            <div id="card" class="card-container" aria-label="Question card" role="button" tabindex="0">
+                <div class="card" id="flashcard">
+                    <div class="card-face card-front">
+                        <span class="tag" id="difficultyBadge">Difficulty</span>
+                        <p id="cardQuestion">Question</p>
+                    </div>
+                    <div class="card-face card-back">
+                        <p id="cardAnswer">Answer</p>
+                    </div>
+                </div>
+                <button id="answeredBtn" class="answered-btn" title="Mark answered and remove from bank">✔ Answered</button>
+            </div>
+        </main>
+
+        <footer>
+            <div class="shortcuts">
+                Shortcuts: Space=Flip • ←/→=Prev/Next • S=Shuffle • X=Answered
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            const dataSources = ['../data.js', './data.js', '../../data.js'];
+            let started = false;
+
+            function loadDataSource(index) {
+                if (index >= dataSources.length) {
+                    startApp();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = dataSources[index];
+                script.onload = () => startApp();
+                script.onerror = () => loadDataSource(index + 1);
+                document.head.appendChild(script);
+            }
+
+            function startApp() {
+                if (started) return;
+                started = true;
+
+                const data = (window.DeepConnectData || []).slice();
+                const autoAdvanceDelayMs = 1800;
+                let advanceTimer = null;
+                let filtered = data.slice();
+                let currentIndex = 0;
+
+                const difficultyFilterEl = document.getElementById('difficultyFilter');
+                const topicFilterEl = document.getElementById('topicFilter');
+                const prevBtn = document.getElementById('prevBtn');
+                const nextBtn = document.getElementById('nextBtn');
+                const flipBtn = document.getElementById('flipBtn');
+                const shuffleBtn = document.getElementById('shuffleBtn');
+                const answeredBtn = document.getElementById('answeredBtn');
+                const cardEl = document.getElementById('card');
+                const qEl = document.getElementById('cardQuestion');
+                const aEl = document.getElementById('cardAnswer');
+                const progressEl = document.getElementById('progress');
+                const badgeEl = document.getElementById('difficultyBadge');
+                const flashcardEl = document.getElementById('flashcard');
+
+                function uniq(xs) {
+                    return Array.from(new Set(xs));
+                }
+
+                function fisherYatesShuffle(arr) {
+                    for (let i = arr.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [arr[i], arr[j]] = [arr[j], arr[i]];
+                    }
+                    return arr;
+                }
+
+                function normalizeCategory(s) {
+                    return (s || '').toString().trim().replace(/_/g, ' ').replace(/\s+/g, ' ');
+                }
+
+                function clampIndex(i) {
+                    if (!filtered.length) return 0;
+                    while (i < 0) i += filtered.length;
+                    while (i >= filtered.length) i -= filtered.length;
+                    return i;
+                }
+
+                function setFlipped(flipped) {
+                    const want = !!flipped;
+                    const was = flashcardEl.classList.contains('is-flipped');
+                    if (was === want) return;
+                    flashcardEl.classList.toggle('is-flipped', want);
+                }
+
+                function updateFaces() {
+                    if (!filtered.length) return;
+                    const item = filtered[currentIndex];
+                    qEl.textContent = `Card ${currentIndex + 1}`;
+                    aEl.textContent = item.question || '';
+                }
+
+                function removeCurrent() {
+                    if (!filtered.length) return;
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+
+                    const current = filtered[currentIndex];
+                    if (!current) return;
+
+                    filtered.splice(currentIndex, 1);
+                    const idxInData = data.findIndex(d => d.id === current.id);
+                    if (idxInData >= 0) data.splice(idxInData, 1);
+                    currentIndex = clampIndex(currentIndex);
+                    render();
+                }
+
+                function render() {
+                    if (!filtered.length) {
+                        qEl.textContent = 'No data';
+                        aEl.textContent = '';
+                        progressEl.textContent = 'Card 0/0';
+                        badgeEl.textContent = '—';
+                        setFlipped(false);
+                        answeredBtn.style.display = 'none';
+                        return;
+                    }
+
+                    const item = filtered[currentIndex];
+                    updateFaces();
+                    progressEl.textContent = `Card ${currentIndex + 1}/${filtered.length}`;
+
+                    const diff = (item.difficulty || '').trim();
+                    badgeEl.textContent = diff || '—';
+                    flashcardEl.classList.remove('theme-easy', 'theme-medium', 'theme-hard');
+                    if (diff === 'Easy') flashcardEl.classList.add('theme-easy');
+                    else if (diff === 'Medium') flashcardEl.classList.add('theme-medium');
+                    else if (diff === 'Hard') flashcardEl.classList.add('theme-hard');
+
+                    setFlipped(false);
+                    answeredBtn.style.display = 'none';
+                }
+
+                const difficulties = uniq(data.map(d => (d.difficulty || '').trim()).filter(Boolean)).sort();
+                for (const difficulty of difficulties) {
+                    const opt = document.createElement('option');
+                    opt.value = difficulty;
+                    opt.textContent = difficulty;
+                    difficultyFilterEl.appendChild(opt);
+                }
+
+                const rawTopics = data.map(d => normalizeCategory(d.category)).filter(Boolean);
+                const topics = uniq(rawTopics).sort((a, b) => a.localeCompare(b, 'vi'));
+                const categoryDisplayMap = {
+                    'Love': 'Love',
+                    'Food': 'Food',
+                    'Travel': 'Travel',
+                    'Family': 'Family',
+                    'Friends': 'Friends',
+                    'Valentine': 'Valentine',
+                    'Tet Viet': 'Tet Viet',
+                    'Nature': 'Nature',
+                    'Deep Talk': 'Deep Talk',
+                    'Tet_Viet': 'Tet Viet'
+                };
+
+                for (const topic of topics) {
+                    const opt = document.createElement('option');
+                    opt.value = topic;
+                    opt.textContent = categoryDisplayMap[topic] || topic;
+                    topicFilterEl.appendChild(opt);
+                }
+
+                function applyFilter() {
+                    const selDiff = difficultyFilterEl.value;
+                    const selTopic = topicFilterEl.value;
+                    filtered = data.filter(d => {
+                        const diff = (d.difficulty || '').trim();
+                        const cat = normalizeCategory(d.category);
+                        const diffOk = selDiff === '__ALL__' ? true : diff === selDiff;
+                        const topicOk = selTopic === '__ALL__' ? true : cat === selTopic;
+                        return diffOk && topicOk;
+                    });
+                    currentIndex = 0;
+                    render();
+                }
+
+                prevBtn.addEventListener('click', () => {
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+                    currentIndex = clampIndex(currentIndex - 1);
+                    render();
+                });
+
+                nextBtn.addEventListener('click', () => {
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+                    currentIndex = clampIndex(currentIndex + 1);
+                    render();
+                });
+
+                flipBtn.addEventListener('click', () => {
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+                    const nowFlipped = !flashcardEl.classList.contains('is-flipped');
+                    setFlipped(nowFlipped);
+                    answeredBtn.style.display = nowFlipped ? 'inline-flex' : 'none';
+                });
+
+                shuffleBtn.addEventListener('click', () => {
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+                    filtered = fisherYatesShuffle(filtered.slice());
+                    currentIndex = 0;
+                    render();
+                });
+
+                answeredBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    removeCurrent();
+                });
+
+                difficultyFilterEl.addEventListener('change', () => {
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+                    applyFilter();
+                });
+
+                topicFilterEl.addEventListener('change', () => {
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+                    applyFilter();
+                });
+
+                cardEl.addEventListener('click', () => {
+                    if (advanceTimer) {
+                        clearTimeout(advanceTimer);
+                        advanceTimer = null;
+                    }
+                    const nowFlipped = !flashcardEl.classList.contains('is-flipped');
+                    setFlipped(nowFlipped);
+                    answeredBtn.style.display = nowFlipped ? 'inline-flex' : 'none';
+                });
+
+                cardEl.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        if (advanceTimer) {
+                            clearTimeout(advanceTimer);
+                            advanceTimer = null;
+                        }
+                        const nowFlipped = !flashcardEl.classList.contains('is-flipped');
+                        setFlipped(nowFlipped);
+                        answeredBtn.style.display = nowFlipped ? 'inline-flex' : 'none';
+                    }
+                });
+
+                window.addEventListener('keydown', (ev) => {
+                    if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA')) return;
+                    if (ev.key === 'ArrowLeft') {
+                        prevBtn.click();
+                    } else if (ev.key === 'ArrowRight') {
+                        nextBtn.click();
+                    } else if (ev.key === ' ') {
+                        ev.preventDefault();
+                        flipBtn.click();
+                    } else if (ev.key.toLowerCase() === 's') {
+                        shuffleBtn.click();
+                    } else if (ev.key.toLowerCase() === 'x') {
+                        answeredBtn.click();
+                    }
+                });
+
+                applyFilter();
+            }
+
+            loadDataSource(0);
+        })();
+    </script>
+</body>
+</html>
